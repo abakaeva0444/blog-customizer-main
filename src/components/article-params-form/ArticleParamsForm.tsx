@@ -1,5 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import clsx from 'clsx';
+
+import { ArrowButton } from 'src/ui/arrow-button';
 import { Button } from 'src/ui/button';
 import { RadioGroup } from 'src/ui/radio-group';
 import { Select } from 'src/ui/select';
@@ -12,64 +14,102 @@ import {
 	fontColors,
 	backgroundColors,
 	contentWidthArr,
+	OptionType,
 } from 'src/constants/articleProps';
+
 import styles from './ArticleParamsForm.module.scss';
+
 interface ArticleParamsFormProps {
-	isOpen: boolean;
 	onApply: (newState: ArticleStateType) => void;
 	onReset: () => void;
 	currentAppState: ArticleStateType;
 }
 
 export const ArticleParamsForm = ({
-	isOpen,
 	onApply,
 	onReset,
 	currentAppState,
 }: ArticleParamsFormProps) => {
-	// 1. Локальное состояние для черновика настроек
+	// Состояние для открытия/закрытия панели (внутри компонента)
+	const [isOpen, setIsOpen] = useState(false);
+	// Локальное состояние для черновика настроек
 	const [draftAppState, setDraftAppState] = useState(currentAppState);
+	// Ref для обработки клика вне области
+	const sidebarRef = useRef<HTMLDivElement>(null);
 
-	// 2. Эффект для обновления черновика при изменении внешнего состояния
+	// Обновляем черновик при изменении внешнего состояния
 	useEffect(() => {
 		setDraftAppState(currentAppState);
 	}, [currentAppState]);
 
-	// 3. Обработчик изменения любого поля формы
-	const handleChange = (fieldName: keyof ArticleStateType, newValue: any) => {
+	// Обработчик клика вне области сайдбара
+	useEffect(() => {
+		const handleClickOutside = (event: MouseEvent) => {
+			if (
+				sidebarRef.current &&
+				!sidebarRef.current.contains(event.target as Node) &&
+				isOpen
+			) {
+				handleClose();
+			}
+		};
+
+		document.addEventListener('mousedown', handleClickOutside);
+		return () => {
+			document.removeEventListener('mousedown', handleClickOutside);
+		};
+	}, [isOpen]);
+
+	// Функции для управления открытием/закрытием
+	const toggleOpen = () => {
+		setIsOpen(!isOpen);
+	};
+
+	const handleClose = () => {
+		setIsOpen(false);
+	};
+
+	// Обработчик изменений в форме
+	const handleChange = (
+		fieldName: keyof ArticleStateType,
+		newValue: OptionType
+	) => {
 		setDraftAppState((prevState) => ({
 			...prevState,
 			[fieldName]: newValue,
 		}));
 	};
 
-	// 4. Обработчик отправки формы (кнопка "Применить")
+	// Обработчик отправки формы (Применить)
 	const handleSubmit = (e: React.FormEvent) => {
-		e.preventDefault(); // Предотвращает перезагрузку страницы
-		onApply(draftAppState); // Передает новые настройки наружу
+		e.preventDefault();
+		onApply(draftAppState);
+		handleClose();
 	};
 
-	// 5. Обработчик сброса формы (кнопка "Сбросить")
-	const handleResetForm = () => {
-		onReset(); // Сбрасывает настройки в главном состоянии
+	// Обработчик сброса формы
+	const handleFormReset = () => {
+		onReset();
+		handleClose();
 	};
 
 	return (
 		<>
-			{/* Панель с формой. */}
+			<ArrowButton isOpen={isOpen} onClick={toggleOpen} />
+
 			<aside
+				ref={sidebarRef}
 				className={clsx(styles.container, {
 					[styles.container_open]: isOpen,
 				})}>
 				<form
 					className={styles.form}
 					onSubmit={handleSubmit}
-					onReset={handleResetForm}>
+					onReset={handleFormReset}>
 					<Text as='h2' size={31} weight={800} uppercase>
 						Задайте параметры
 					</Text>
 
-					{/* Поле выбора шрифта */}
 					<Select
 						title='Шрифт'
 						options={fontFamilyOptions}
@@ -79,7 +119,6 @@ export const ArticleParamsForm = ({
 						}
 					/>
 
-					{/* Поле выбора размера шрифта */}
 					<RadioGroup
 						title='Размер шрифта'
 						name='fontSize'
@@ -90,7 +129,6 @@ export const ArticleParamsForm = ({
 						}
 					/>
 
-					{/* Поле выбора цвета шрифта */}
 					<RadioGroup
 						title='Цвет шрифта'
 						name='fontColor'
@@ -103,7 +141,6 @@ export const ArticleParamsForm = ({
 
 					<Separator />
 
-					{/* Поле выбора цвета фона */}
 					<RadioGroup
 						title='Цвет фона'
 						name='backgroundColor'
@@ -114,7 +151,6 @@ export const ArticleParamsForm = ({
 						}
 					/>
 
-					{/* Поле выбора ширины контента */}
 					<RadioGroup
 						title='Ширина контента'
 						name='contentWidth'
@@ -126,9 +162,7 @@ export const ArticleParamsForm = ({
 					/>
 
 					<div className={styles.bottomContainer}>
-						{/* Кнопка "Сбросить" с типом reset */}
 						<Button title='Сбросить' htmlType='reset' type='clear' />
-						{/* Кнопка "Применить" с типом submit */}
 						<Button title='Применить' htmlType='submit' type='apply' />
 					</div>
 				</form>
