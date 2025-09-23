@@ -81,7 +81,7 @@ export const ArticleParamsForm = ({
 	};
 
 	// Обработчик отправки формы (Применить)
-	const handleSubmit = (e: React.FormEvent) => {
+	const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
 		onApply(draftAppState);
 		handleClose();
